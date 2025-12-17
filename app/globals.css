@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: var(--font-cormorant-garamond), serif;
+  --font-korean-serif: var(--font-gowun), serif;
+  --font-sans: var(--font-inter), sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: #2C1810;
+  --color-primary-foreground: #F9F5F0;
+
+  --color-accent: #E5D3B3;
+  --color-accent-foreground: #2C1810;
+
+  --color-muted: #EAE0D5;
+  --color-muted-foreground: #5D4037;
+
+  --color-cream: #F9F5F0;
+}
+
+:root {
+  --background: #F9F5F0;
+  /* Cream */
+  --foreground: #2C1810;
+  /* Deep Rosewood */
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+}
+
+/* Custom approach to handle nested color definitions from v3 config like primary-foreground */
+/* Because in v4 --color-primary-foreground generates 'primary-foreground' utility class suffix */
+/* So text-primary-foreground works. */
