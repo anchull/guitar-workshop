@@ -1,9 +1,71 @@
 "use client";
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 import type { TranslationKey } from "@/lib/translations";
+
+function HoverPlayVideo({
+    src,
+    poster,
+    className,
+}: {
+    src: string;
+    poster?: string;
+    className?: string;
+}) {
+    const ref = useRef<HTMLVideoElement | null>(null);
+
+    const play = async () => {
+        const el = ref.current;
+        if (!el) return;
+        try {
+            // Ensure playback starts from beginning on hover (safe even before metadata).
+            try {
+                el.currentTime = 0;
+            } catch {
+                // ignore
+            }
+            await el.play();
+        } catch {
+            // Autoplay can be blocked in some cases; ignore.
+        }
+    };
+
+    const stop = () => {
+        const el = ref.current;
+        if (!el) return;
+        el.pause();
+        try {
+            el.currentTime = 0;
+        } catch {
+            // ignore
+        }
+    };
+
+    return (
+        <video
+            ref={ref}
+            className={className}
+            src={src}
+            poster={poster}
+            muted
+            playsInline
+            preload="metadata"
+            loop
+            disablePictureInPicture
+            controlsList="nodownload noplaybackrate noremoteplayback"
+            // no controls: user requested no UI
+            onMouseEnter={play}
+            onMouseLeave={stop}
+            onFocus={play}
+            onBlur={stop}
+            onTouchStart={play}
+            onTouchEnd={stop}
+        />
+    );
+}
 
 export default function Gallery() {
     const { t } = useLanguage();
@@ -13,24 +75,28 @@ export default function Gallery() {
         titleKey: TranslationKey;
         descKey: TranslationKey;
         image: string;
+        video: string;
     }> = [
         {
             id: "spanish",
             titleKey: "model_spanish_title",
             descKey: "model_spanish_desc",
             image: "/guitar_traditional_new3.jpg",
+            video: "/model_traditional.mp4",
         },
         {
             id: "lattice",
             titleKey: "model_lattice_title",
             descKey: "model_lattice_desc",
             image: "/guitar_lattice_new.png",
+            video: "/model_lattice.mp4",
         },
         {
             id: "doubletop",
             titleKey: "model_doubletop_title",
             descKey: "model_doubletop_desc",
             image: "/guitar_doubletop_new.jpg",
+            video: "/model_doubletop.mp4",
         },
     ];
 
@@ -75,27 +141,6 @@ export default function Gallery() {
                     <div className="mt-6 mx-auto h-px w-20 bg-accent/70" />
                 </div>
 
-                {/* 360° Rotation Video (optional) */}
-                <div className="mb-28">
-                    <div className="max-w-4xl mx-auto">
-                        <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-black/10 shadow-xl bg-black">
-                            <video
-                                className="h-full w-full object-contain"
-                                src="/rotation.mp4"
-                                muted
-                                playsInline
-                                loop
-                                autoPlay
-                                preload="metadata"
-                                controls
-                            />
-                        </div>
-                        <p className="mt-4 text-center text-sm text-foreground/70">
-                            회전 영상이 보이지 않으면 `public/rotation.mp4` 파일을 추가해 주세요.
-                        </p>
-                    </div>
-                </div>
-
                 {/* Models Showcase - Zig Zag Layout */}
                 <div className="flex flex-col gap-32 mb-40">
                     {models.map((model, index) => (
@@ -103,18 +148,15 @@ export default function Gallery() {
                             key={model.id}
                             // Animation removed to prevent 'darkening' effect perception from fade-in
                             // Even items: img-left, text-right. Odd items: img-right, text-left.
-                            className={`flex flex-col ${index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"} items-center gap-12 lg:gap-24`}
+                            className={`group flex flex-col ${index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"} items-center gap-12 lg:gap-24`}
                         >
-                            {/* Image Side */}
+                            {/* Media Side (hover-play video) */}
                             <div className="w-full lg:w-1/2">
                                 <div className="relative aspect-[3/4] w-full overflow-hidden shadow-2xl rounded-sm">
-                                    <Image
-                                        src={model.image}
-                                        alt={t(model.titleKey)}
-                                        fill
-                                        quality={85}
-                                        sizes="(min-width: 1024px) 50vw, 100vw"
-                                        className="object-contain transform hover:scale-105 transition-transform duration-1000"
+                                    <HoverPlayVideo
+                                        src={model.video}
+                                        poster={model.image}
+                                        className="absolute inset-0 h-full w-full object-contain transform transition-transform duration-1000 group-hover:scale-105"
                                     />
                                 </div>
                             </div>
