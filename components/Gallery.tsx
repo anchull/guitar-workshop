@@ -75,6 +75,27 @@ export default function Gallery() {
                     <div className="mt-6 mx-auto h-px w-20 bg-accent/70" />
                 </div>
 
+                {/* 360° Rotation Video (optional) */}
+                <div className="mb-28">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-black/10 shadow-xl bg-black">
+                            <video
+                                className="h-full w-full object-contain"
+                                src="/rotation.mp4"
+                                muted
+                                playsInline
+                                loop
+                                autoPlay
+                                preload="metadata"
+                                controls
+                            />
+                        </div>
+                        <p className="mt-4 text-center text-sm text-foreground/70">
+                            회전 영상이 보이지 않으면 `public/rotation.mp4` 파일을 추가해 주세요.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Models Showcase - Zig Zag Layout */}
                 <div className="flex flex-col gap-32 mb-40">
                     {models.map((model, index) => (
