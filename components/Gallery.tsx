@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
@@ -8,62 +8,146 @@ import type { TranslationKey } from "@/lib/translations";
 
 function HoverPlayVideo({
     src,
-    poster,
     className,
 }: {
     src: string;
-    poster?: string;
     className?: string;
 }) {
-    const ref = useRef<HTMLVideoElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const shouldPlayRef = useRef(false);
+    const srcAttachedRef = useRef(false);
+    const [isPlaying, setIsPlaying] = useState(false);
 
-    const play = async () => {
-        const el = ref.current;
+    const attachSrcIfNeeded = useCallback(() => {
+        const el = videoRef.current;
         if (!el) return;
-        try {
-            // Ensure playback starts from beginning on hover (safe even before metadata).
-            try {
-                el.currentTime = 0;
-            } catch {
-                // ignore
-            }
-            await el.play();
-        } catch {
-            // Autoplay can be blocked in some cases; ignore.
-        }
-    };
+        // Always ensure the correct src is attached (avoid "all cards show same video")
+        const current = el.getAttribute("src") ?? "";
+        if (srcAttachedRef.current && current === src) return;
 
-    const stop = () => {
-        const el = ref.current;
-        if (!el) return;
-        el.pause();
+        // Attach src lazily to prevent showing any preloaded first frame
+        el.setAttribute("src", src);
         try {
-            el.currentTime = 0;
+            el.load();
         } catch {
             // ignore
         }
+        srcAttachedRef.current = true;
+    }, [src]);
+
+    const detachSrc = useCallback(() => {
+        const el = videoRef.current;
+        if (!el) return;
+        if (!srcAttachedRef.current) return;
+
+        try {
+            el.pause();
+        } catch {
+            // ignore
+        }
+
+        // Remove src so browser can't render a "preview frame"
+        el.removeAttribute("src");
+        try {
+            el.load();
+        } catch {
+            // ignore
+        }
+        srcAttachedRef.current = false;
+        setIsPlaying(false);
+    }, []);
+
+    const attemptPlay = useCallback(() => {
+        const el = videoRef.current;
+        if (!el) return;
+        attachSrcIfNeeded();
+        // Ensure autoplay policy compatibility
+        el.muted = true;
+        el.playsInline = true;
+
+        const p = el.play();
+        if (p && typeof (p as Promise<void>).catch === "function") {
+            (p as Promise<void>).catch(() => {
+                // Autoplay may still be blocked; we'll retry on loadeddata if visible.
+            });
+        }
+    }, []);
+
+    const play = async () => {
+        shouldPlayRef.current = true;
+        attemptPlay();
     };
 
+    const stop = () => {
+        shouldPlayRef.current = false;
+        const el = videoRef.current;
+        if (!el) return;
+        el.pause();
+    };
+
+    // Auto-play when the video container is visible in viewport.
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        // Start loading/playing slightly before it fully enters view
+        const thresholds = [0, 0.01, 0.1, 0.25, 0.5, 1];
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (!entry) return;
+
+                const shouldPlay = entry.isIntersecting && entry.intersectionRatio >= 0.01;
+                shouldPlayRef.current = shouldPlay;
+                if (shouldPlay) {
+                    attemptPlay();
+                } else {
+                    const el = videoRef.current;
+                    if (el) el.pause();
+                    // Detach src when offscreen so no still frame remains
+                    detachSrc();
+                }
+            },
+            { threshold: thresholds, rootMargin: "200px 0px 200px 0px" }
+        );
+
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, [attemptPlay, detachSrc]);
+
     return (
-        <video
-            ref={ref}
-            className={className}
-            src={src}
-            poster={poster}
-            muted
-            playsInline
-            preload="metadata"
-            loop
-            disablePictureInPicture
-            controlsList="nodownload noplaybackrate noremoteplayback"
-            // no controls: user requested no UI
-            onMouseEnter={play}
-            onMouseLeave={stop}
-            onFocus={play}
-            onBlur={stop}
-            onTouchStart={play}
-            onTouchEnd={stop}
-        />
+        <div ref={containerRef} className="absolute inset-0 bg-black">
+            <video
+                ref={videoRef}
+                key={src}
+                className={[
+                    className ?? "",
+                    // Hide any "first frame" / preview until the video is actually playing
+                    "transition-opacity duration-300",
+                    isPlaying ? "opacity-100" : "opacity-0",
+                ].join(" ")}
+                muted
+                playsInline
+                autoPlay
+                preload="none"
+                loop
+                disablePictureInPicture
+                controlsList="nodownload noplaybackrate noremoteplayback"
+                // no controls: user requested no UI
+                onPlaying={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onLoadedData={() => {
+                    if (shouldPlayRef.current) attemptPlay();
+                }}
+                onMouseEnter={play}
+                onMouseLeave={stop}
+                onFocus={play}
+                onBlur={stop}
+                onTouchStart={play}
+                onTouchEnd={stop}
+            />
+        </div>
     );
 }
 
@@ -74,28 +158,24 @@ export default function Gallery() {
         id: string;
         titleKey: TranslationKey;
         descKey: TranslationKey;
-        image: string;
         video: string;
     }> = [
         {
             id: "spanish",
             titleKey: "model_spanish_title",
             descKey: "model_spanish_desc",
-            image: "/guitar_traditional_new3.jpg",
             video: "/model_traditional.mp4",
         },
         {
             id: "lattice",
             titleKey: "model_lattice_title",
             descKey: "model_lattice_desc",
-            image: "/guitar_lattice_new.png",
             video: "/model_lattice.mp4",
         },
         {
             id: "doubletop",
             titleKey: "model_doubletop_title",
             descKey: "model_doubletop_desc",
-            image: "/guitar_doubletop_new.jpg",
             video: "/model_doubletop.mp4",
         },
     ];
@@ -155,8 +235,7 @@ export default function Gallery() {
                                 <div className="relative aspect-[3/4] w-full overflow-hidden shadow-2xl rounded-sm">
                                     <HoverPlayVideo
                                         src={model.video}
-                                        poster={model.image}
-                                        className="absolute inset-0 h-full w-full object-contain transform transition-transform duration-1000 group-hover:scale-105"
+                                        className="absolute inset-0 h-full w-full object-contain bg-black transform transition-transform duration-1000 group-hover:scale-105"
                                     />
                                 </div>
                             </div>
