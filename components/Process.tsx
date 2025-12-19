@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function Process() {
     const { t } = useLanguage();
     const [activeStep, setActiveStep] = useState(0);
+    const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
 
     const steps = [
         {
@@ -30,6 +31,33 @@ export default function Process() {
         },
     ];
 
+    // Auto-select the step as the user scrolls (no click needed).
+    useEffect(() => {
+        const els = stepRefs.current.filter(Boolean) as HTMLDivElement[];
+        if (els.length === 0) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                // pick the most visible intersecting step
+                const visible = entries
+                    .filter((e) => e.isIntersecting)
+                    .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0))[0];
+                if (!visible) return;
+
+                const idx = els.findIndex((el) => el === visible.target);
+                if (idx >= 0) setActiveStep(idx);
+            },
+            {
+                threshold: [0.15, 0.3, 0.45, 0.6, 0.75],
+                // Trigger a bit before center so it feels responsive while scrolling
+                rootMargin: "-20% 0px -55% 0px",
+            }
+        );
+
+        els.forEach((el) => observer.observe(el));
+        return () => observer.disconnect();
+    }, [steps.length]);
+
     return (
         <section id="process" className="py-24 px-6 md:px-12 bg-background border-t border-muted/20">
             <div className="max-w-7xl mx-auto">
@@ -43,15 +71,18 @@ export default function Process() {
                         {steps.map((step, index) => (
                             <motion.div
                                 key={step.number}
+                                ref={(el) => {
+                                    stepRefs.current[index] = el;
+                                }}
                                 initial={{ opacity: 0, x: -20 }}
                                 whileInView={{ opacity: 1, x: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1, duration: 0.5 }}
-                                onClick={() => setActiveStep(index)}
-                                className={`relative pl-8 border-l-2 cursor-pointer transition-all duration-300 group
+                                onMouseEnter={() => setActiveStep(index)}
+                                className={`relative pl-8 border-l-2 transition-all duration-300 group rounded-md
                                     ${activeStep === index
-                                        ? "border-accent"
-                                        : "border-muted/30 hover:border-accent/50"
+                                        ? "border-accent bg-accent/5"
+                                        : "border-muted/30 hover:border-accent/50 hover:bg-muted/10"
                                     }`}
                             >
                                 <div className={`absolute -left-[1.65rem] top-0 text-sm font-serif font-bold transition-colors duration-300 bg-background py-1
@@ -64,25 +95,29 @@ export default function Process() {
                                     {step.title}
                                 </h3>
 
-                                <motion.div
-                                    initial={false}
-                                    animate={{
-                                        height: activeStep === index ? "auto" : 0,
-                                        opacity: activeStep === index ? 1 : 0
-                                    }}
-                                    transition={{ duration: 0.3 }}
-                                    className="overflow-hidden"
-                                >
-                                    <p className="text-foreground/85 font-normal leading-relaxed whitespace-pre-line pb-2">
-                                        {step.description}
-                                    </p>
-                                </motion.div>
+                                {/* Mobile: show image per step (no click) */}
+                                <div className="lg:hidden mt-5 mb-6">
+                                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg shadow-xl">
+                                        <div className="absolute inset-0 bg-black/10 z-10" />
+                                        <Image
+                                            src={step.image}
+                                            alt={step.title}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 1024px) 100vw, 0px"
+                                        />
+                                    </div>
+                                </div>
+
+                                <p className="text-foreground/85 font-normal leading-relaxed whitespace-pre-line pb-2">
+                                    {step.description}
+                                </p>
                             </motion.div>
                         ))}
                     </div>
 
                     {/* Right Column: Image Presentation */}
-                    <div className="w-full lg:w-1/2 relative aspect-[4/3] lg:aspect-square lg:sticky lg:top-24">
+                    <div className="hidden lg:block w-full lg:w-1/2 relative aspect-square lg:sticky lg:top-24">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={activeStep}
@@ -98,7 +133,8 @@ export default function Process() {
                                     alt={steps[activeStep].title}
                                     fill
                                     className="object-cover"
-                                    priority
+                                    priority={activeStep === 0}
+                                    sizes="(min-width: 1024px) 50vw, 0px"
                                 />
                             </motion.div>
                         </AnimatePresence>
