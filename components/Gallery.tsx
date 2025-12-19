@@ -75,15 +75,9 @@ function HoverPlayVideo({
     }, []);
 
     const play = async () => {
-        shouldPlayRef.current = true;
+        // Hover/focus/touch should ONLY help trigger playback (do not pause on leave),
+        // since we already auto-play/pause based on viewport visibility.
         attemptPlay();
-    };
-
-    const stop = () => {
-        shouldPlayRef.current = false;
-        const el = videoRef.current;
-        if (!el) return;
-        el.pause();
     };
 
     // Auto-play when the video container is visible in viewport.
@@ -141,11 +135,8 @@ function HoverPlayVideo({
                     if (shouldPlayRef.current) attemptPlay();
                 }}
                 onMouseEnter={play}
-                onMouseLeave={stop}
                 onFocus={play}
-                onBlur={stop}
                 onTouchStart={play}
-                onTouchEnd={stop}
             />
         </div>
     );
