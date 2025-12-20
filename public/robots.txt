@@ -1,4 +1,13 @@
 User-agent: *
+Disallow:
+Allow: /
+
+User-agent: Yeti
+Disallow:
+Allow: /
+
+User-agent: Yeti-Mobile
+Disallow:
 Allow: /
 
 Sitemap: https://www.ahnsguitar.com/sitemap.xml
