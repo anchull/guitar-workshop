@@ -71,8 +71,10 @@ export const metadata: Metadata = {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   other: {
-    // 네이버 서치어드바이저 소유확인용
-    "naver-site-verification": process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION ?? "",
+    // 네이버 서치어드바이저 소유확인용 (메타태그 방식)
+    ...(process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION
+      ? { "naver-site-verification": process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION }
+      : {}),
   },
 };
 
