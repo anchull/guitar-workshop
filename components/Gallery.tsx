@@ -19,14 +19,18 @@ function HoverPlayVideo({
     const srcAttachedRef = useRef(false);
     const [isPlaying, setIsPlaying] = useState(false);
 
+    // Manual rotation (scrubbing) state
+    const [isDragging, setIsDragging] = useState(false);
+    const startXRef = useRef(0);
+    const startCurrentTimeRef = useRef(0);
+    const wasPlayingRef = useRef(false);
+
     const attachSrcIfNeeded = useCallback(() => {
         const el = videoRef.current;
         if (!el) return;
-        // Always ensure the correct src is attached (avoid "all cards show same video")
         const current = el.getAttribute("src") ?? "";
         if (srcAttachedRef.current && current === src) return;
 
-        // Attach src lazily to prevent showing any preloaded first frame
         el.setAttribute("src", src);
         try {
             el.load();
@@ -47,7 +51,6 @@ function HoverPlayVideo({
             // ignore
         }
 
-        // Remove src so browser can't render a "preview frame"
         el.removeAttribute("src");
         try {
             el.load();
@@ -60,32 +63,28 @@ function HoverPlayVideo({
 
     const attemptPlay = useCallback(() => {
         const el = videoRef.current;
-        if (!el) return;
+        if (!el || isDragging) return;
         attachSrcIfNeeded();
-        // Ensure autoplay policy compatibility
         el.muted = true;
         el.playsInline = true;
 
         const p = el.play();
         if (p && typeof (p as Promise<void>).catch === "function") {
             (p as Promise<void>).catch(() => {
-                // Autoplay may still be blocked; we'll retry on loadeddata if visible.
+                // Autoplay blocked
             });
         }
-    }, []);
+    }, [isDragging, attachSrcIfNeeded]);
 
     const play = async () => {
-        // Hover/focus/touch should ONLY help trigger playback (do not pause on leave),
-        // since we already auto-play/pause based on viewport visibility.
         attemptPlay();
     };
 
-    // Auto-play when the video container is visible in viewport.
+    // Auto-play/pause based on viewport visibility.
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        // Start loading/playing slightly before it fully enters view
         const thresholds = [0, 0.01, 0.1, 0.25, 0.5, 1];
         const observer = new IntersectionObserver(
             (entries) => {
@@ -95,11 +94,10 @@ function HoverPlayVideo({
                 const shouldPlay = entry.isIntersecting && entry.intersectionRatio >= 0.01;
                 shouldPlayRef.current = shouldPlay;
                 if (shouldPlay) {
-                    attemptPlay();
+                    if (!isDragging) attemptPlay();
                 } else {
                     const el = videoRef.current;
                     if (el) el.pause();
-                    // Detach src when offscreen so no still frame remains
                     detachSrc();
                 }
             },
@@ -108,18 +106,69 @@ function HoverPlayVideo({
 
         observer.observe(container);
         return () => observer.disconnect();
-    }, [attemptPlay, detachSrc]);
+    }, [attemptPlay, detachSrc, isDragging]);
+
+    // Drag / Touch scrubbing logic
+    const handleDragStart = (clientX: number) => {
+        const el = videoRef.current;
+        if (!el || !srcAttachedRef.current) return;
+
+        setIsDragging(true);
+        startXRef.current = clientX;
+        startCurrentTimeRef.current = el.currentTime;
+        wasPlayingRef.current = !el.paused;
+        el.pause();
+    };
+
+    const handleDragMove = (clientX: number) => {
+        if (!isDragging) return;
+        const el = videoRef.current;
+        if (!el) return;
+
+        const deltaX = clientX - startXRef.current;
+        // Sensitivity: how many pixels correspond to the video duration
+        // Using container width as a reference for a full rotation
+        const containerWidth = containerRef.current?.offsetWidth || 500;
+        const duration = el.duration;
+        
+        if (duration > 0) {
+            // Moving one full container width = 1 full rotation (the whole video)
+            const deltaPercentage = deltaX / containerWidth;
+            let newTime = startCurrentTimeRef.current - (deltaPercentage * duration);
+            
+            // Wrap around for looping video
+            newTime = ((newTime % duration) + duration) % duration;
+            el.currentTime = newTime;
+        }
+    };
+
+    const handleDragEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+        if (wasPlayingRef.current) {
+            attemptPlay();
+        }
+    };
 
     return (
-        <div ref={containerRef} className="absolute inset-0 bg-black">
+        <div 
+            ref={containerRef} 
+            className="absolute inset-0 bg-black cursor-grab active:cursor-grabbing touch-none select-none"
+            onMouseDown={(e) => handleDragStart(e.clientX)}
+            onMouseMove={(e) => handleDragMove(e.clientX)}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+            onTouchEnd={handleDragEnd}
+        >
             <video
                 ref={videoRef}
                 key={src}
                 className={[
                     className ?? "",
-                    // Hide any "first frame" / preview until the video is actually playing
-                    "transition-opacity duration-300",
-                    isPlaying ? "opacity-100" : "opacity-0",
+                    "transition-opacity duration-300 pointer-events-none",
+                    (isPlaying || isDragging) ? "opacity-100" : "opacity-0",
                 ].join(" ")}
                 muted
                 playsInline
@@ -128,15 +177,12 @@ function HoverPlayVideo({
                 loop
                 disablePictureInPicture
                 controlsList="nodownload noplaybackrate noremoteplayback"
-                // no controls: user requested no UI
                 onPlaying={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
                 onLoadedData={() => {
-                    if (shouldPlayRef.current) attemptPlay();
+                    if (shouldPlayRef.current && !isDragging) attemptPlay();
                 }}
                 onMouseEnter={play}
                 onFocus={play}
-                onTouchStart={play}
             />
         </div>
     );
@@ -149,24 +195,28 @@ export default function Gallery() {
         id: string;
         titleKey: TranslationKey;
         descKey: TranslationKey;
+        priceKey: TranslationKey;
         video: string;
     }> = [
         {
             id: "spanish",
             titleKey: "model_spanish_title",
             descKey: "model_spanish_desc",
+            priceKey: "model_spanish_price",
             video: "/model_traditional.mp4",
         },
         {
             id: "lattice",
             titleKey: "model_lattice_title",
             descKey: "model_lattice_desc",
+            priceKey: "model_lattice_price",
             video: "/model_lattice.mp4",
         },
         {
             id: "doubletop",
             titleKey: "model_doubletop_title",
             descKey: "model_doubletop_desc",
+            priceKey: "model_doubletop_price",
             video: "/model_doubletop.mp4",
         },
     ];
@@ -240,6 +290,9 @@ export default function Gallery() {
                                     <div className="w-16 h-[1px] bg-accent mx-auto lg:mx-0 mb-8" />
                                     <p className="text-foreground/85 font-normal leading-relaxed text-lg font-serif">
                                         {t(model.descKey)}
+                                    </p>
+                                    <p className="mt-8 text-accent font-medium text-2xl tracking-tight">
+                                        {t(model.priceKey)}
                                     </p>
                                 </div>
                             </div>

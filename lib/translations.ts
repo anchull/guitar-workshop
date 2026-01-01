@@ -3,9 +3,9 @@ export type TranslationKey =
     | "hero_subtitle" | "hero_title_main" | "hero_title_connector" | "hero_span" | "hero_desc" | "hero_cta_collection" | "hero_cta_philosophy"
     | "about_subtitle" | "about_p2"
     | "gallery_subtitle" | "gallery_title" | "gallery_view_details" | "gallery_wood_title"
-    | "model_spanish_title" | "model_spanish_desc"
-    | "model_lattice_title" | "model_lattice_desc"
-    | "model_doubletop_title" | "model_doubletop_desc"
+    | "model_spanish_title" | "model_spanish_desc" | "model_spanish_price"
+    | "model_lattice_title" | "model_lattice_desc" | "model_lattice_price"
+    | "model_doubletop_title" | "model_doubletop_desc" | "model_doubletop_price"
     | "wood_rosewood_title" | "wood_rosewood_desc"
     | "wood_maple_title" | "wood_maple_desc"
     | "wood_jacaranda_title" | "wood_jacaranda_desc"
@@ -46,10 +46,13 @@ export const translations: Record<"en" | "ko", Record<TranslationKey, string>> =
 
         model_spanish_title: "Model Traditional",
         model_spanish_desc: "A deep, warm tone and elegant resonance rooted in Spanish tradition. Optimized for the classical repertoire.",
+        model_spanish_price: "$3,000 ~",
         model_lattice_title: "Model Lattice",
         model_lattice_desc: "Maximizes nuanced expression with immediate response and powerful projection.",
+        model_lattice_price: "$3,000 ~",
         model_doubletop_title: "Model Double Top",
         model_doubletop_desc: "The pinnacle of modern acoustics. Overwhelming volume and clear balance—an ideal choice for competitions and concert halls.",
+        model_doubletop_price: "$4,500 ~",
 
         wood_rosewood_title: "Indian Rosewood",
         wood_rosewood_desc: "Deep, solid, and the standard of aesthetics.",
@@ -116,10 +119,13 @@ export const translations: Record<"en" | "ko", Record<TranslationKey, string>> =
 
         model_spanish_title: "Model Traditional",
         model_spanish_desc: "스페인 전통의 깊고 따뜻한 음색과 우아한 울림. 정통 클래식 연주에 최적화되었습니다.",
+        model_spanish_price: "₩4,000,000 ~",
         model_lattice_title: "Model Lattice",
         model_lattice_desc: "즉각적인 반응성과 파워풀한 프로젝션으로 섬세한 표현을 극대화합니다.",
+        model_lattice_price: "₩4,000,000 ~",
         model_doubletop_title: "Model Double Top",
         model_doubletop_desc: "현대 음향학의 정점. 압도적인 성량과 명료한 밸런스. 콩쿠르와 홀 연주를 위한 선택입니다.",
+        model_doubletop_price: "₩6,000,000 ~",
 
         wood_rosewood_title: "Indian Rosewood",
         wood_rosewood_desc: "깊고 단단한 표준의 미학.",
