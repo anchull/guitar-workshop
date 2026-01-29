@@ -88,7 +88,7 @@ export const translations: Record<"en" | "ko", Record<TranslationKey, string>> =
 
         footer_name: "Ahn Cheol-young Classical Guitar Workshop",
         footer_address: "9-1, Baegun-ro, Nam-gu, Gwangju",
-        footer_phone: "010-8606-011",
+        footer_phone: "010-8606-0100",
         footer_rights: "All rights reserved.",
     },
     ko: {
@@ -158,7 +158,7 @@ export const translations: Record<"en" | "ko", Record<TranslationKey, string>> =
 
         footer_name: "안철영 클래식기타 공방",
         footer_address: "광주광역시 남구 백운로 9-1",
-        footer_phone: "010-8606-011",
+        footer_phone: "010-8606-0100",
         footer_rights: "All rights reserved.",
     },
 };
